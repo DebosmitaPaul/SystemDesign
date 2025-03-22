@@ -1,0 +1,84 @@
+package com.HashingConcept;
+
+import java.util.SortedMap;
+import java.util.TreeMap;
+
+public class ConsistentHashing<T> {
+    private final SortedMap<Integer, T> circle = new TreeMap<>();
+    private final int numberOfReplica ;
+    ConsistentHashing(int n, T... nodes){
+        this.numberOfReplica = n;
+        for(T node: nodes){
+            add(node);
+        }
+    }
+
+    private void add(T node) {
+        for(int i=0; i<numberOfReplica; i++){
+            int hash = getHash(node.toString()+i);
+            circle.put(hash,node);
+        }
+    }
+    private void remove(T node) {
+        for(int i=0; i<numberOfReplica; i++){
+            int hash = getHash(node.toString()+i);
+            circle.remove(hash);
+        }
+    }
+    private int getHash(String key) {
+        return Math.abs(key.hashCode());
+    }
+    private T get(String msg) {
+        if(circle.isEmpty()){
+            return null;
+        }
+        int hash = getHash(msg);
+        if(!circle.containsKey(hash)){
+            SortedMap<Integer, T> tailMap = circle.tailMap(hash);
+            hash = tailMap.isEmpty() ? circle.firstKey() : tailMap.firstKey();
+        }
+        return circle.get(hash);
+    }
+    public static void main(String[] args) {
+        ConsistentHashing consistentHashing = new ConsistentHashing(3, "cache10", "cache20", "cache30");
+        System.out.println(consistentHashing.getHash("cache10"));
+        System.out.println(consistentHashing.getHash("cache20"));
+        System.out.println(consistentHashing.getHash("cache30"));
+
+        System.out.println(consistentHashing.getHash("apple") +"  "+consistentHashing.get("apple"));
+        System.out.println(consistentHashing.getHash("banana") +"  "+consistentHashing.get("banana"));
+        System.out.println(consistentHashing.getHash("panda") +"  "+consistentHashing.get("panda"));
+        System.out.println();
+        consistentHashing.add("cache32");
+        System.out.println(consistentHashing.getHash("cache32"));
+
+        System.out.println(consistentHashing.getHash("grape") +"  "+consistentHashing.get("grape"));
+        System.out.println(consistentHashing.getHash("zebra") +"  "+consistentHashing.get("zebra"));
+        System.out.println();
+        consistentHashing.remove("cache30");
+        System.out.println(consistentHashing.getHash("apple") +"  "+consistentHashing.get("apple"));
+        System.out.println(consistentHashing.getHash("banana") +"  "+consistentHashing.get("banana"));
+        System.out.println(consistentHashing.getHash("panda") +"  "+consistentHashing.get("panda"));
+
+    }
+}
+
+
+//-------------------output--------------------//
+C:\Tools\Java\jdk-17.0.10\bin\java.exe "-javaagent:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.1.3\lib\idea_rt.jar=55987:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.1.3\bin" -Dfile.encoding=UTF-8 -classpath C:\myProject\MyLogger\out\production\MyLogger com.HashingConcept.ConsistentHashing
+540204321
+540204352
+540204383
+93029210  cache30
+1396355227  cache30
+106432986  cache30
+
+540204385
+98615627  cache32
+115776262  cache32
+
+93029210  cache32
+1396355227  cache32
+106432986  cache32
+
+Process finished with exit code 0
