@@ -1,0 +1,97 @@
+package com.twoPhaseLock;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+class Reource implements Runnable {
+    TwoPhaseLockSystem lockSystem ;
+    Object resource1;
+    Object resource2;
+    public  Reource(TwoPhaseLockSystem lockSystem, Object resource1, Object resource2){
+        this.lockSystem = lockSystem;
+        this.resource1 = resource1;
+        this.resource2 = resource2;
+    }
+
+    @Override
+    public void run() {
+        try {
+            lockSystem.acquireWriteLock(resource1);
+            System.out.println(Thread.currentThread().getName() + " acquired write lock on " + resource1.toString());
+            Thread.sleep(2000); // Simulate some work
+            lockSystem.acquireWriteLock(resource2);
+            System.out.println(Thread.currentThread().getName() + " acquired write lock on " + resource2.toString());
+            Thread.sleep(2000);
+            System.out.println(Thread.currentThread().getName() + " finished");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }finally {
+            lockSystem.releaseLock(resource1);
+            lockSystem.releaseLock(resource2);
+        }
+    }
+}
+
+public class TwoPhaseLockSystem {
+
+    private final Map<Object, ReentrantLock> locks = new HashMap<>();
+
+    public synchronized void acquireReadLock(Object resource) throws InterruptedException {
+        Lock lock = locks.computeIfAbsent(resource, k -> new ReentrantLock());
+        lock.lock();
+        //In a read lock system, you would keep track of read/write locks, and their types.
+        //This simple example only shows exclusive locks.
+    }
+
+    public synchronized void acquireWriteLock(Object resource) throws InterruptedException {
+//        locks.putIfAbsent(resource,new ReentrantLock());
+//        locks.get(resource);
+        Lock lock = locks.computeIfAbsent(resource, k -> new ReentrantLock());
+//        lock.lock();
+//        trylock helps in setting timeout locks
+        lock.tryLock(1, TimeUnit.SECONDS);
+    }
+
+    public synchronized void releaseLock(Object resource) {
+        try {
+            Lock lock = locks.get(resource);
+            lock.unlock();
+        }catch (Exception ex){
+            System.out.println("Exception lock : " + ex.getMessage());
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        TwoPhaseLockSystem lockSystem = new TwoPhaseLockSystem();
+        Object resource1 = "resource1";
+        Object resource2 = "resource2";
+
+        Runnable transaction1 = new Reource(lockSystem, resource1, resource2);
+        Runnable transaction2 = new Reource(lockSystem, resource2, resource1);
+        Thread th = new Thread(transaction1);
+        Thread th2 = new Thread(transaction2);
+        th.start();
+        th2.start();
+        th.join();
+        th2.join();
+
+        System.out.println("Main thread finished.");
+    }
+}
+
+//----------------------Output-----------------//
+C:\Tools\Java\jdk-17.0.10\bin\java.exe "-javaagent:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.1.3\lib\idea_rt.jar=54332:C:\Program Files\JetBrains\IntelliJ IDEA Community Edition 2021.1.3\bin" -Dfile.encoding=UTF-8 -classpath C:\myProject\MyLogger\out\production\MyLogger com.twoPhaseLock.TwoPhaseLockSystem
+Thread-1 acquired write lock on resource2
+Thread-0 acquired write lock on resource1
+Thread-0 acquired write lock on resource2
+Thread-1 acquired write lock on resource1
+Thread-0 finished
+Exception lock : null
+Thread-1 finished
+Exception lock : null
+Main thread finished.
+
+Process finished with exit code 0
+
